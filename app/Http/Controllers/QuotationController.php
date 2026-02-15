@@ -1,0 +1,167 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Quotation;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class QuotationController extends Controller
+{
+    public function __construct()
+    {
+        $this->authorizeResource(\App\Models\Quotation::class, 'quotation');
+    }
+    public function index(Request $request)
+    {
+        $this->authorize('viewAny', Quotation::class);
+
+        $query = Quotation::with('creator');
+
+        // filters: q, status, user_id, date_from, date_to
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('user_id')) {
+            $query->where('created_by', $request->input('user_id'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->input('date_to'));
+        }
+
+        if ($request->filled('q')) {
+            $q = $request->input('q');
+            $query->where(function($q2) use ($q) {
+                $q2->where('quotation_number', 'like', "%{$q}%")
+                    ->orWhere('customer_name', 'like', "%{$q}%")
+                    ->orWhere('customer_email', 'like', "%{$q}%");
+            });
+        }
+
+        if (Auth::user()->role === 'sales') {
+            $query->where('created_by', Auth::id());
+        }
+
+        // Export handling
+        if ($request->filled('export')) {
+            $format = $request->input('export');
+            $items = $query->latest()->get();
+            if ($format === 'csv') {
+                $filename = 'quotations_'.now()->format('Ymd_His').'.csv';
+                $headers = [
+                    'Content-Type' => 'text/csv',
+                    'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+                ];
+
+                $columns = ['Quotation#','Customer','Email','Total','Status','Created By','Created At'];
+
+                $callback = function() use ($items, $columns) {
+                    $handle = fopen('php://output','w');
+                    fputcsv($handle, $columns);
+                    foreach ($items as $it) {
+                        fputcsv($handle, [
+                            $it->quotation_number,
+                            $it->customer_name,
+                            $it->customer_email,
+                            number_format($it->total_amount,2),
+                            $it->status,
+                            $it->creator?->name,
+                            $it->created_at->toDateTimeString(),
+                        ]);
+                    }
+                    fclose($handle);
+                };
+
+                return response()->stream($callback, 200, $headers);
+            }
+
+            if ($format === 'pdf') {
+                $data = ['items' => $query->latest()->get()];
+                if (class_exists('\PDF')) {
+                    $pdf = \PDF::loadView('quotations.export_pdf', $data);
+                    return $pdf->stream('quotations.pdf');
+                }
+                // fallback: return HTML view
+                return view('quotations.export_pdf', $data);
+            }
+        }
+
+        $quotations = $query->latest()->paginate(15)->withQueryString();
+        $users = User::select('id','name')->get();
+
+        return view('quotations.index', compact('quotations','users'));
+    }
+
+    public function create()
+    {
+        $this->authorize('create', Quotation::class);
+        return view('quotations.create');
+    }
+
+    public function store(Request $request)
+    {
+        $this->authorize('create', Quotation::class);
+
+        $data = $request->validate([
+            'quotation_number' => 'required|string|unique:quotations,quotation_number',
+            'customer_name' => 'required|string|max:255',
+            'customer_email' => 'nullable|email|max:255',
+            'customer_phone' => 'nullable|string|max:30',
+            'source_of_inquiry_id' => 'nullable|exists:source_of_inquiries,id',
+            'notes' => 'nullable|string',
+            'total_amount' => 'required|numeric|min:0',
+            'status' => 'required|in:draft,sent,accepted,rejected,converted',
+        ]);
+
+        $data['created_by'] = Auth::id();
+
+        Quotation::create($data);
+
+        return redirect()->route('quotations.index')->with('success', 'Quotation created.');
+    }
+
+    public function show(Quotation $quotation)
+    {
+        $this->authorize('view', $quotation);
+        return view('quotations.show', compact('quotation'));
+    }
+
+    public function edit(Quotation $quotation)
+    {
+        $this->authorize('update', $quotation);
+        return view('quotations.edit', compact('quotation'));
+    }
+
+    public function update(Request $request, Quotation $quotation)
+    {
+        $this->authorize('update', $quotation);
+
+        $data = $request->validate([
+            'customer_name' => 'required|string|max:255',
+            'customer_email' => 'nullable|email|max:255',
+            'customer_phone' => 'nullable|string|max:30',
+            'source_of_inquiry_id' => 'nullable|exists:source_of_inquiries,id',
+            'notes' => 'nullable|string',
+            'total_amount' => 'required|numeric|min:0',
+            'status' => 'required|in:draft,sent,accepted,rejected,converted',
+        ]);
+
+        $quotation->update($data);
+
+        return redirect()->route('quotations.index')->with('success', 'Quotation updated.');
+    }
+
+    public function destroy(Quotation $quotation)
+    {
+        $this->authorize('delete', $quotation);
+        $quotation->delete();
+        return redirect()->route('quotations.index')->with('success', 'Quotation deleted.');
+    }
+}
