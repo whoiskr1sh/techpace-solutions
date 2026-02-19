@@ -38,7 +38,14 @@ abstract class Controller extends BaseController
         ];
 
         foreach ($map as $method => $ability) {
-            $this->middleware("can:{$ability},{$parameter}")->only($method);
+            // For actions that operate on the resource collection or create a new model
+            // (index, create, store) pass the model class to the policy. For actions
+            // that operate on an existing model instance, pass the route parameter.
+            if (in_array($method, ['index', 'create', 'store'])) {
+                $this->middleware("can:{$ability},{$model}")->only($method);
+            } else {
+                $this->middleware("can:{$ability},{$parameter}")->only($method);
+            }
         }
     }
 }

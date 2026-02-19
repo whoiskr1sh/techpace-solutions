@@ -12,17 +12,12 @@ class PurchaseOrderPolicy
 
     public function viewAny(User $user)
     {
-        return in_array($user->role, ['admin','sales']);
+        return in_array($user->role, ['admin', 'sales']);
     }
 
     public function view(User $user, PurchaseOrder $po)
     {
-        if ($user->role === 'admin') return true;
-        if ($user->role === 'sales') {
-            // sales can view PO if linked SO belongs to them
-            return $po->salesOrder && $po->salesOrder->created_by === $user->id;
-        }
-        return false;
+        return in_array($user->role, ['admin', 'sales']);
     }
 
     public function create(User $user)

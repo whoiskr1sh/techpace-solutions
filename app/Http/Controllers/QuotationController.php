@@ -38,39 +38,37 @@ class QuotationController extends Controller
 
         if ($request->filled('q')) {
             $q = $request->input('q');
-            $query->where(function($q2) use ($q) {
+            $query->where(function ($q2) use ($q) {
                 $q2->where('quotation_number', 'like', "%{$q}%")
                     ->orWhere('customer_name', 'like', "%{$q}%")
                     ->orWhere('customer_email', 'like', "%{$q}%");
             });
         }
 
-        if (Auth::user()->role === 'sales') {
-            $query->where('created_by', Auth::id());
-        }
+
 
         // Export handling
         if ($request->filled('export')) {
             $format = $request->input('export');
             $items = $query->latest()->get();
             if ($format === 'csv') {
-                $filename = 'quotations_'.now()->format('Ymd_His').'.csv';
+                $filename = 'quotations_' . now()->format('Ymd_His') . '.csv';
                 $headers = [
                     'Content-Type' => 'text/csv',
                     'Content-Disposition' => "attachment; filename=\"{$filename}\"",
                 ];
 
-                $columns = ['Quotation#','Customer','Email','Total','Status','Created By','Created At'];
+                $columns = ['Quotation#', 'Customer', 'Email', 'Total', 'Status', 'Created By', 'Created At'];
 
-                $callback = function() use ($items, $columns) {
-                    $handle = fopen('php://output','w');
+                $callback = function () use ($items, $columns) {
+                    $handle = fopen('php://output', 'w');
                     fputcsv($handle, $columns);
                     foreach ($items as $it) {
                         fputcsv($handle, [
                             $it->quotation_number,
                             $it->customer_name,
                             $it->customer_email,
-                            number_format($it->total_amount,2),
+                            number_format($it->total_amount, 2),
                             $it->status,
                             $it->creator?->name,
                             $it->created_at->toDateTimeString(),
@@ -94,9 +92,9 @@ class QuotationController extends Controller
         }
 
         $quotations = $query->latest()->paginate(15)->withQueryString();
-        $users = User::select('id','name')->get();
+        $users = User::select('id', 'name')->get();
 
-        return view('quotations.index', compact('quotations','users'));
+        return view('quotations.index', compact('quotations', 'users'));
     }
 
     public function create()
@@ -116,13 +114,65 @@ class QuotationController extends Controller
             'customer_phone' => 'nullable|string|max:30',
             'source_of_inquiry_id' => 'nullable|exists:source_of_inquiries,id',
             'notes' => 'nullable|string',
-            'total_amount' => 'required|numeric|min:0',
             'status' => 'required|in:draft,sent,accepted,rejected,converted',
+            'items' => 'required|array|min:1',
+            'items.*.make' => 'nullable|string',
+            'items.*.model_no' => 'nullable|string',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.discount' => 'nullable|numeric|min:0',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.delivery_time' => 'nullable|string',
+            'items.*.remarks' => 'nullable|string',
+            'is_usd' => 'nullable|boolean',
         ]);
 
-        $data['created_by'] = Auth::id();
+        $currency = $request->has('is_usd') && $request->is_usd ? 'USD' : 'INR';
 
-        Quotation::create($data);
+        // Calculate total amount from items to be safe
+        $totalAmount = 0;
+        foreach ($data['items'] as $item) {
+            $unitPrice = $item['unit_price'];
+            $discount = $item['discount'] ?? 0;
+            $qty = $item['quantity'];
+
+            // Discount calculation (Assuming percentage as per view logic)
+            // View: unitDisc = unit - (unit * disc / 100)
+            $unitDiscPrice = $unitPrice - ($unitPrice * $discount / 100);
+            $totalAmount += $unitDiscPrice * $qty;
+        }
+
+        $quotation = Quotation::create([
+            'quotation_number' => $data['quotation_number'],
+            'customer_name' => $data['customer_name'],
+            'customer_email' => $data['customer_email'],
+            'customer_phone' => $data['customer_phone'],
+            'source_of_inquiry_id' => $data['source_of_inquiry_id'],
+            'notes' => $data['notes'],
+            'status' => $data['status'],
+            'currency' => $currency,
+            'total_amount' => $totalAmount,
+            'created_by' => Auth::id(),
+        ]);
+
+        foreach ($data['items'] as $item) {
+            $unitPrice = $item['unit_price'];
+            $discount = $item['discount'] ?? 0;
+            $qty = $item['quantity'];
+            $unitDiscPrice = $unitPrice - ($unitPrice * $discount / 100);
+            $totalPrice = $unitDiscPrice * $qty;
+
+            $quotation->items()->create([
+                'make' => $item['make'],
+                'model_no' => $item['model_no'],
+                'unit_price' => $unitPrice,
+                'discount' => $discount, // Storing percentage
+                'unit_discounted_price' => $unitDiscPrice,
+                'quantity' => $qty,
+                'total_price' => $totalPrice,
+                'delivery_time' => $item['delivery_time'],
+                'remarks' => $item['remarks'],
+            ]);
+        }
 
         return redirect()->route('quotations.index')->with('success', 'Quotation created.');
     }
@@ -149,11 +199,63 @@ class QuotationController extends Controller
             'customer_phone' => 'nullable|string|max:30',
             'source_of_inquiry_id' => 'nullable|exists:source_of_inquiries,id',
             'notes' => 'nullable|string',
-            'total_amount' => 'required|numeric|min:0',
             'status' => 'required|in:draft,sent,accepted,rejected,converted',
+            'items' => 'required|array|min:1',
+            'items.*.make' => 'nullable|string',
+            'items.*.model_no' => 'nullable|string',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.discount' => 'nullable|numeric|min:0',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.delivery_time' => 'nullable|string',
+            'items.*.remarks' => 'nullable|string',
+            'is_usd' => 'nullable|boolean',
         ]);
 
-        $quotation->update($data);
+        $currency = $request->has('is_usd') && $request->is_usd ? 'USD' : 'INR';
+
+        // Calculate total
+        $totalAmount = 0;
+        foreach ($data['items'] as $item) {
+            $unitPrice = $item['unit_price'];
+            $discount = $item['discount'] ?? 0;
+            $qty = $item['quantity'];
+            $unitDiscPrice = $unitPrice - ($unitPrice * $discount / 100);
+            $totalAmount += $unitDiscPrice * $qty;
+        }
+
+        $quotation->update([
+            'customer_name' => $data['customer_name'],
+            'customer_email' => $data['customer_email'],
+            'customer_phone' => $data['customer_phone'],
+            'source_of_inquiry_id' => $data['source_of_inquiry_id'],
+            'notes' => $data['notes'],
+            'status' => $data['status'],
+            'currency' => $currency,
+            'total_amount' => $totalAmount,
+        ]);
+
+        // Sync items: Delete all and recreate
+        $quotation->items()->delete();
+
+        foreach ($data['items'] as $item) {
+            $unitPrice = $item['unit_price'];
+            $discount = $item['discount'] ?? 0;
+            $qty = $item['quantity'];
+            $unitDiscPrice = $unitPrice - ($unitPrice * $discount / 100);
+            $totalPrice = $unitDiscPrice * $qty;
+
+            $quotation->items()->create([
+                'make' => $item['make'],
+                'model_no' => $item['model_no'],
+                'unit_price' => $unitPrice,
+                'discount' => $discount,
+                'unit_discounted_price' => $unitDiscPrice,
+                'quantity' => $qty,
+                'total_price' => $totalPrice,
+                'delivery_time' => $item['delivery_time'],
+                'remarks' => $item['remarks'],
+            ]);
+        }
 
         return redirect()->route('quotations.index')->with('success', 'Quotation updated.');
     }

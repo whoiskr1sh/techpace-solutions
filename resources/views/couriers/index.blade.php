@@ -1,30 +1,36 @@
 @extends('layouts.dashboard')
 
 @section('content')
-<div class="bg-white shadow rounded p-6">
-    <h2 class="text-lg font-semibold mb-4">Couriers</h2>
-    <p class="text-gray-600">This is a placeholder list for courier shipments. You can replace this with a full Courier resource later.</p>
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold">Couriers</h2>
+        <!-- Placeholder actions if needed, or empty -->
+    </div>
 
-    <table class="w-full mt-4 text-sm">
-        <thead>
-            <tr class="text-left text-gray-600">
-                <th class="pb-2">Tracking</th>
-                <th class="pb-2">Order</th>
-                <th class="pb-2">Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td class="py-2">TRK123456</td>
-                <td class="py-2">SO-1001</td>
-                <td class="py-2">In Transit</td>
-            </tr>
-            <tr>
-                <td class="py-2">TRK123457</td>
-                <td class="py-2">SO-1002</td>
-                <td class="py-2">Delivered</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+    <div class="mb-4">
+        <p class="text-gray-600 text-sm">This is a placeholder list for courier shipments.</p>
+    </div>
+
+    <div class="bg-white rounded shadow overflow-hidden">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs text-left text-gray-600">
+                <tr>
+                    <th class="p-3">Tracking</th>
+                    <th class="p-3">Order</th>
+                    <th class="p-3">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="border-t">
+                    <td class="p-3">TRK123456</td>
+                    <td class="p-3">SO-1001</td>
+                    <td class="p-3">In Transit</td>
+                </tr>
+                <tr class="border-t">
+                    <td class="p-3">TRK123457</td>
+                    <td class="p-3">SO-1002</td>
+                    <td class="p-3">Delivered</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 @endsection

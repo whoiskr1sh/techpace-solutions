@@ -18,7 +18,7 @@ class PurchaseOrderController extends Controller
     {
         $this->authorize('viewAny', PurchaseOrder::class);
 
-        $query = PurchaseOrder::with(['vendor','salesOrder']);
+        $query = PurchaseOrder::with(['vendor', 'salesOrder']);
 
         if ($request->filled('q')) {
             $q = $request->input('q');
@@ -33,11 +33,45 @@ class PurchaseOrderController extends Controller
             $query->where('vendor_id', $request->input('vendor_id'));
         }
 
+        // Export Csv
+        if ($request->filled('export') && $request->input('export') === 'csv') {
+            if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'sales') {
+                abort(403, 'Unauthorized action.');
+            }
+
+            $items = $query->latest()->get();
+            $filename = 'purchase_orders_' . now()->format('Ymd_His') . '.csv';
+            $headers = [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            ];
+
+            $columns = ['PO #', 'Vendor', 'Date', 'Total Amount', 'Status', 'Created At'];
+
+            $callback = function () use ($items, $columns) {
+                $handle = fopen('php://output', 'w');
+                fputcsv($handle, $columns);
+                foreach ($items as $item) {
+                    fputcsv($handle, [
+                        $item->po_number,
+                        $item->vendor->name ?? '',
+                        $item->order_date ? $item->order_date->toDateString() : '',
+                        (float) $item->total_amount,
+                        $item->status,
+                        $item->created_at->toDateTimeString(),
+                    ]);
+                }
+                fclose($handle);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        }
+
         $pos = $query->latest()->paginate(15)->withQueryString();
 
         $vendors = Vendor::active()->get();
 
-        return view('purchase_orders.index', compact('pos','vendors'));
+        return view('purchase_orders.index', compact('pos', 'vendors'));
     }
 
     public function create(Request $request)
@@ -47,7 +81,7 @@ class PurchaseOrderController extends Controller
         $vendors = Vendor::active()->get();
         $salesOrders = SalesOrder::latest()->limit(50)->get();
 
-        return view('purchase_orders.create', compact('vendors','salesOrders'));
+        return view('purchase_orders.create', compact('vendors', 'salesOrders'));
     }
 
     public function store(Request $request)
@@ -69,13 +103,13 @@ class PurchaseOrderController extends Controller
 
         PurchaseOrder::create($data);
 
-        return redirect()->route('purchase-orders.index')->with('success','Purchase Order created.');
+        return redirect()->route('purchase-orders.index')->with('success', 'Purchase Order created.');
     }
 
     public function show(PurchaseOrder $purchase_order)
     {
         $this->authorize('view', $purchase_order);
-        return view('purchase_orders.show', ['po' => $purchase_order->load(['vendor','salesOrder'])]);
+        return view('purchase_orders.show', ['po' => $purchase_order->load(['vendor', 'salesOrder'])]);
     }
 
     public function edit(PurchaseOrder $purchase_order)
@@ -85,7 +119,7 @@ class PurchaseOrderController extends Controller
         $vendors = Vendor::active()->get();
         $salesOrders = SalesOrder::latest()->limit(50)->get();
 
-        return view('purchase_orders.edit', compact('purchase_order','vendors','salesOrders'));
+        return view('purchase_orders.edit', compact('purchase_order', 'vendors', 'salesOrders'));
     }
 
     public function update(Request $request, PurchaseOrder $purchase_order)
@@ -93,7 +127,7 @@ class PurchaseOrderController extends Controller
         $this->authorize('update', $purchase_order);
 
         $data = $request->validate([
-            'po_number' => 'required|string|max:64|unique:purchase_orders,po_number,'.$purchase_order->id,
+            'po_number' => 'required|string|max:64|unique:purchase_orders,po_number,' . $purchase_order->id,
             'vendor_id' => 'required|exists:vendors,id',
             'sales_order_id' => 'nullable|exists:sales_orders,id',
             'order_date' => 'required|date',
@@ -105,13 +139,13 @@ class PurchaseOrderController extends Controller
 
         $purchase_order->update($data);
 
-        return redirect()->route('purchase-orders.index')->with('success','Purchase Order updated.');
+        return redirect()->route('purchase-orders.index')->with('success', 'Purchase Order updated.');
     }
 
     public function destroy(PurchaseOrder $purchase_order)
     {
         $this->authorize('delete', $purchase_order);
         $purchase_order->delete();
-        return redirect()->route('purchase-orders.index')->with('success','Purchase Order deleted.');
+        return redirect()->route('purchase-orders.index')->with('success', 'Purchase Order deleted.');
     }
 }

@@ -38,39 +38,37 @@ class SalesOrderController extends Controller
 
         if ($request->filled('q')) {
             $q = $request->input('q');
-            $query->where(function($q2) use ($q) {
+            $query->where(function ($q2) use ($q) {
                 $q2->where('so_number', 'like', "%{$q}%")
-                    ->orWhereHas('quotation', function($q3) use ($q) {
+                    ->orWhereHas('quotation', function ($q3) use ($q) {
                         $q3->where('customer_name', 'like', "%{$q}%");
                     });
             });
         }
 
-        if (Auth::user()->role === 'sales') {
-            $query->where('created_by', Auth::id());
-        }
+
 
         if ($request->filled('export')) {
             $format = $request->input('export');
             $items = $query->latest()->get();
             if ($format === 'csv') {
-                $filename = 'sales_orders_'.now()->format('Ymd_His').'.csv';
+                $filename = 'sales_orders_' . now()->format('Ymd_His') . '.csv';
                 $headers = [
                     'Content-Type' => 'text/csv',
                     'Content-Disposition' => "attachment; filename=\"{$filename}\"",
                 ];
 
-                $columns = ['SO#','Quotation','Customer','Total','Status','Created By','Created At'];
+                $columns = ['SO#', 'Quotation', 'Customer', 'Total', 'Status', 'Created By', 'Created At'];
 
-                $callback = function() use ($items, $columns) {
-                    $handle = fopen('php://output','w');
+                $callback = function () use ($items, $columns) {
+                    $handle = fopen('php://output', 'w');
                     fputcsv($handle, $columns);
                     foreach ($items as $it) {
                         fputcsv($handle, [
                             $it->so_number,
                             $it->quotation?->quotation_number,
                             $it->quotation?->customer_name,
-                            number_format($it->total_amount,2),
+                            number_format($it->total_amount, 2),
                             $it->status,
                             $it->creator?->name,
                             $it->created_at->toDateTimeString(),
@@ -93,9 +91,9 @@ class SalesOrderController extends Controller
         }
 
         $salesOrders = $query->latest()->paginate(15)->withQueryString();
-        $users = User::select('id','name')->get();
+        $users = User::select('id', 'name')->get();
 
-        return view('sales_orders.index', compact('salesOrders','users'));
+        return view('sales_orders.index', compact('salesOrders', 'users'));
     }
 
     public function create(Request $request)
@@ -103,9 +101,7 @@ class SalesOrderController extends Controller
         $this->authorize('create', SalesOrder::class);
 
         $quotations = Quotation::query();
-        if (Auth::user()->role === 'sales') {
-            $quotations->where('created_by', Auth::id());
-        }
+
         $quotations = $quotations->whereNull('deleted_at')->get();
 
         return view('sales_orders.create', compact('quotations'));
@@ -122,13 +118,7 @@ class SalesOrderController extends Controller
             'status' => 'required|in:pending,confirmed,dispatched,completed',
         ]);
 
-        // Ensure sales cannot create orders for quotations they don't own
-        if (Auth::user()->role === 'sales') {
-            $quotation = Quotation::find($data['quotation_id']);
-            if (!$quotation || $quotation->created_by !== Auth::id()) {
-                abort(403);
-            }
-        }
+
 
         $data['created_by'] = Auth::id();
 

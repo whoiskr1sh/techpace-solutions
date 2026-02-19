@@ -12,24 +12,25 @@ class SalesOrderPolicy
 
     public function viewAny(User $user)
     {
-        return in_array($user->role, ['admin','sales']);
+        return in_array($user->role, ['admin', 'sales']);
     }
 
     public function view(User $user, SalesOrder $salesOrder)
     {
-        return $user->role === 'admin' || $user->id === $salesOrder->created_by;
+        return in_array($user->role, ['admin', 'sales']);
     }
 
     public function create(User $user)
     {
-        return in_array($user->role, ['admin','sales']);
+        return in_array($user->role, ['admin', 'sales']);
     }
 
     public function update(User $user, SalesOrder $salesOrder)
     {
-        if ($user->role === 'admin') return true;
+        if ($user->role === 'admin')
+            return true;
         if ($user->role === 'sales') {
-            return $user->id === $salesOrder->created_by && in_array($salesOrder->status, ['pending','confirmed']);
+            return $user->id === $salesOrder->created_by && in_array($salesOrder->status, ['pending', 'confirmed']);
         }
         return false;
     }

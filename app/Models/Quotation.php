@@ -18,9 +18,15 @@ class Quotation extends Model
         'source_of_inquiry_id',
         'notes',
         'total_amount',
+        'currency',
         'status',
         'created_by',
     ];
+
+    public function items()
+    {
+        return $this->hasMany(QuotationItem::class);
+    }
 
     public function creator()
     {

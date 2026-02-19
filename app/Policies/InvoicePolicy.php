@@ -15,28 +15,29 @@ class InvoicePolicy
 
     public function viewAny(User $user)
     {
-        if ($user->role === 'admin') return true;
+        if ($user->role === 'admin')
+            return true;
         return $user->role === 'sales' && $this->invoicesVisibleForSales();
     }
 
     public function view(User $user, Invoice $invoice)
     {
-        if ($user->role === 'admin') return true;
-        if ($user->role === 'sales' && $this->invoicesVisibleForSales()) {
-            return $invoice->created_by == $user->id;
-        }
-        return false;
+        if ($user->role === 'admin')
+            return true;
+        return $user->role === 'sales' && $this->invoicesVisibleForSales();
     }
 
     public function create(User $user)
     {
-        if ($user->role === 'admin') return true;
+        if ($user->role === 'admin')
+            return true;
         return $user->role === 'sales' && $this->invoicesVisibleForSales();
     }
 
     public function update(User $user, Invoice $invoice)
     {
-        if ($user->role === 'admin') return true;
+        if ($user->role === 'admin')
+            return true;
         return $user->role === 'sales' && $this->invoicesVisibleForSales() && $invoice->created_by == $user->id;
     }
 

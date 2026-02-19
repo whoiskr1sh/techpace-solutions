@@ -20,7 +20,7 @@ class InvoiceController extends Controller
     {
         $this->authorize('viewAny', Invoice::class);
 
-        $query = Invoice::with(['proformaInvoice','salesOrder']);
+        $query = Invoice::with(['proformaInvoice', 'salesOrder']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
@@ -43,29 +43,36 @@ class InvoiceController extends Controller
             $query->where('invoice_number', 'like', "%{$q}%")->orWhere('customer_name', 'like', "%{$q}%");
         }
 
+        // Export handling
         if ($request->filled('export')) {
             $format = $request->input('export');
-            $items = $query->latest()->get();
+
+            // Allow CSV export for admin only
             if ($format === 'csv') {
-                $filename = 'invoices_'.now()->format('Ymd_His').'.csv';
+                if (Auth::user()->role !== 'admin' && Auth::user()->role !== 'sales') {
+                    abort(403);
+                }
+                $items = $query->latest()->get();
+                $filename = 'invoices_' . now()->format('Ymd_His') . '.csv';
                 $headers = [
                     'Content-Type' => 'text/csv',
                     'Content-Disposition' => "attachment; filename=\"{$filename}\"",
                 ];
 
-                $columns = ['Invoice#','Customer','Total','Status','Created By','Issue Date'];
+                $columns = ['Invoice#', 'Customer', 'Issue Date', 'Due Date', 'Total', 'Status', 'Created At'];
 
-                $callback = function() use ($items, $columns) {
-                    $handle = fopen('php://output','w');
+                $callback = function () use ($items, $columns) {
+                    $handle = fopen('php://output', 'w');
                     fputcsv($handle, $columns);
                     foreach ($items as $it) {
                         fputcsv($handle, [
                             $it->invoice_number,
                             $it->customer_name,
-                            number_format($it->total_amount,2),
+                            $it->issue_date ? $it->issue_date->toDateString() : '',
+                            $it->due_date ? $it->due_date->toDateString() : '',
+                            (float) $it->total_amount,
                             $it->status,
-                            $it->creator?->name,
-                            optional($it->issue_date)->toDateString(),
+                            $it->created_at->toDateTimeString(),
                         ]);
                     }
                     fclose($handle);
@@ -73,21 +80,12 @@ class InvoiceController extends Controller
 
                 return response()->stream($callback, 200, $headers);
             }
-
-            if ($format === 'pdf') {
-                $data = ['items' => $query->latest()->get()];
-                if (class_exists('\PDF')) {
-                    $pdf = \PDF::loadView('invoices.export_pdf', $data);
-                    return $pdf->stream('invoices.pdf');
-                }
-                return view('invoices.export_pdf', $data);
-            }
         }
 
         $invoices = $query->latest()->paginate(15)->withQueryString();
-        $users = User::select('id','name')->get();
+        $users = User::select('id', 'name')->get();
 
-        return view('invoices.index', compact('invoices','users'));
+        return view('invoices.index', compact('invoices', 'users'));
     }
 
     public function create()
@@ -119,13 +117,13 @@ class InvoiceController extends Controller
 
         Invoice::create($data);
 
-        return redirect()->route('invoices.index')->with('success','Invoice created.');
+        return redirect()->route('invoices.index')->with('success', 'Invoice created.');
     }
 
     public function show(Invoice $invoice)
     {
         $this->authorize('view', $invoice);
-        return view('invoices.show', ['invoice' => $invoice->load(['proformaInvoice','salesOrder'])]);
+        return view('invoices.show', ['invoice' => $invoice->load(['proformaInvoice', 'salesOrder'])]);
     }
 
     public function edit(Invoice $invoice)
@@ -134,7 +132,7 @@ class InvoiceController extends Controller
 
         $salesOrders = SalesOrder::latest()->limit(50)->get();
 
-        return view('invoices.edit', compact('invoice','salesOrders'));
+        return view('invoices.edit', compact('invoice', 'salesOrders'));
     }
 
     public function update(Request $request, Invoice $invoice)
@@ -142,7 +140,7 @@ class InvoiceController extends Controller
         $this->authorize('update', $invoice);
 
         $data = $request->validate([
-            'invoice_number' => 'required|string|max:64|unique:invoices,invoice_number,'.$invoice->id,
+            'invoice_number' => 'required|string|max:64|unique:invoices,invoice_number,' . $invoice->id,
             'proforma_invoice_id' => 'nullable|exists:proforma_invoices,id',
             'sales_order_id' => 'nullable|exists:sales_orders,id',
             'customer_name' => 'nullable|string|max:255',
@@ -155,7 +153,7 @@ class InvoiceController extends Controller
 
         $invoice->update($data);
 
-        return redirect()->route('invoices.index')->with('success','Invoice updated.');
+        return redirect()->route('invoices.index')->with('success', 'Invoice updated.');
     }
 
     public function destroy(Invoice $invoice)
@@ -164,6 +162,6 @@ class InvoiceController extends Controller
 
         $invoice->delete();
 
-        return redirect()->route('invoices.index')->with('success','Invoice deleted.');
+        return redirect()->route('invoices.index')->with('success', 'Invoice deleted.');
     }
 }
