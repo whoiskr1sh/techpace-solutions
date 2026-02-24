@@ -1,14 +1,14 @@
 @extends('layouts.dashboard')
 
 @section('content')
-    <div class="max-w-7xl mx-auto">
-        <div class="flex justify-between items-center mb-6">
+    <div class="max-w-7xl mx-auto px-6 py-6">
+        <div class="flex justify-between items-center mb-4">
             <h2 class="text-2xl font-bold text-gray-800">Create Quotation</h2>
         </div>
 
-        <form method="POST" action="{{ route('quotations.store') }}" class="bg-white rounded-lg shadow-sm p-6"
-            id="quotationForm">
+        <form method="POST" action="{{ route('quotations.store') }}" class="bg-white rounded-lg shadow-sm p-6" id="quotationForm">
             @csrf
+            <input type="hidden" name="status" value="draft">
 
             <!-- Header Info -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -17,144 +17,192 @@
                     <input name="quotation_number" value="{{ old('quotation_number') }}"
                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
                         required>
-                    @error('quotation_number')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Customer Name</label>
                     <input name="customer_name" value="{{ old('customer_name') }}"
                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
                         required>
-                    @error('customer_name')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Customer Email</label>
                     <input name="customer_email" value="{{ old('customer_email') }}"
                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border">
-                    @error('customer_email')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Status</label>
-                    <select name="status"
-                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border">
-                        <option value="draft">Draft</option>
-                        <option value="sent">Sent</option>
-                        <option value="accepted">Accepted</option>
-                        <option value="rejected">Rejected</option>
-                    </select>
+            <!-- Items + Summary (items expanded full width; summary moved below to the right) -->
+            <div class="grid grid-cols-1 gap-6 mb-6 items-start">
+                <!-- Items: span full width -->
+                <div class="w-full overflow-x-auto bg-white border rounded p-4">
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Items</h3>
+                    <table class="min-w-full divide-y divide-gray-200" id="itemsTable">
+                        <thead class="bg-gray-50">
+                            <tr class="text-xs text-gray-600">
+                                <th class="px-2 py-2 text-left w-10">Sr.</th>
+                                <th class="px-2 py-2 text-left">Item</th>
+                                <th class="px-2 py-2 text-left w-20">Unit</th>
+                                <th class="px-2 py-2 text-right w-20">Qty</th>
+                                <th class="px-2 py-2 text-right w-24">Rate</th>
+                                <th class="px-2 py-2 text-right w-28">Amount</th>
+                                <th class="px-2 py-2 text-left w-24">Discount</th>
+                                <th class="px-2 py-2 text-right w-24">Disc Val</th>
+                                <th class="px-2 py-2 text-right w-28">Total</th>
+                                <th class="px-2 py-2 text-right w-20">GST%</th>
+                                <th class="px-2 py-2 text-right w-28">GST Amt</th>
+                                <th class="px-2 py-2 text-right w-28">Total+GST</th>
+                                <th class="px-2 py-2 w-8"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200" id="itemsBody">
+                        </tbody>
+                        
+                    </table>
+                    <div class="mt-2">
+                        <button type="button" onclick="addItemRow()" class="text-sm text-blue-600 hover:text-blue-900 font-medium">+ Add Item</button>
+                    </div>
                 </div>
-                <div>
-                    <label class="flex items-center space-x-2 mt-6">
-                        <input type="checkbox" name="is_usd" value="1"
-                            class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                        <span class="text-sm font-medium text-gray-700">Price in USD</span>
-                    </label>
+
+                <!-- Remarks (moved above summary) -->
+                <div class="mb-6 w-full">
+                    <label class="block text-sm font-medium text-gray-700">Remark</label>
+                    <textarea name="notes" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm sm:text-sm px-3 py-2 border">{{ old('notes') }}</textarea>
+                </div>
+
+                <!-- Summary: horizontal cards under Remarks -->
+                <div class="w-full mt-4">
+                    <div class="bg-gray-50 p-2 rounded w-full text-sm">
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700">Apply GST?</label>
+                            <select id="applyGst" class="mt-1 block w-full border-gray-300 rounded px-3 py-2 border">
+                                <option value="1">Apply GST</option>
+                                <option value="0">Do not apply</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700">Subject</label>
+                            <input name="subject" class="mt-1 block w-full border-gray-300 rounded px-3 py-2 border" value="{{ old('subject') }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700">Terms & Condition</label>
+                            <select name="terms" class="mt-1 block w-full border-gray-300 rounded px-3 py-2 border">
+                                <option value="">Select</option>
+                                <option value="100% Against PI">100% Against PI</option>
+                            </select>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <div class="bg-white rounded p-2 shadow-sm w-full sm:w-1/2 lg:w-1/4">
+                                <div class="text-xs text-gray-500">Amount</div>
+                                <div class="text-base font-medium text-right" id="summaryAmount">₹ 0.00</div>
+                            </div>
+                            <div class="bg-white rounded p-2 shadow-sm w-full sm:w-1/2 lg:w-1/4">
+                                <div class="text-xs text-gray-500">Total Discount</div>
+                                <div class="text-base font-medium text-right" id="summaryDiscount">₹ 0.00</div>
+                            </div>
+                            <div class="bg-white rounded p-2 shadow-sm w-full sm:w-1/2 lg:w-1/4">
+                                <div class="text-xs text-gray-500">Total Amount</div>
+                                <div class="text-base font-medium text-right" id="summaryTotal">₹ 0.00</div>
+                            </div>
+
+                            <div class="bg-white rounded p-2 shadow-sm w-full sm:w-1/2 lg:w-1/6">
+                                <div class="text-xs text-gray-500">CGST</div>
+                                <div class="text-base font-medium text-right" id="summaryCGST">₹ 0.00</div>
+                            </div>
+                            <div class="bg-white rounded p-2 shadow-sm w-full sm:w-1/2 lg:w-1/6">
+                                <div class="text-xs text-gray-500">SGST</div>
+                                <div class="text-base font-medium text-right" id="summarySGST">₹ 0.00</div>
+                            </div>
+
+                            <div class="bg-white rounded p-2 shadow-sm w-full lg:w-1/3">
+                                <div class="text-xs text-gray-500">IGST</div>
+                                <div class="text-base font-medium text-right" id="summaryIGST">₹ 0.00</div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-3 mt-2">
+                            <div class="flex items-center gap-2">
+                                <div class="text-xs text-gray-500">Round Off</div>
+                                <input type="number" id="roundOff" class="w-20 text-right border rounded px-2 py-1 text-sm" value="0" oninput="calculateNet()">
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-500 text-right">Net Amount</div>
+                                <div class="text-base font-semibold text-right" id="netAmount">0.00</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 flex gap-2">
+                            <a href="{{ route('quotations.index') }}" class="flex-1 px-2 py-1 bg-white text-gray-700 border border-gray-300 rounded text-sm">Cancel</a>
+                            <button type="submit" class="flex-1 px-2 py-1 bg-blue-600 text-white rounded text-sm">Create Quotation</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <!-- Line Items -->
-            <div class="mb-6 overflow-x-auto">
-                <h3 class="text-lg font-medium text-gray-900 mb-2">Line Items</h3>
-                <table class="min-w-full divide-y divide-gray-200 border" id="itemsTable">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Make
-                            </th>
-                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model
-                                No</th>
-                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                                Unit Price</th>
-                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
-                                Disc (%)</th>
-                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                                Unit Disc.</th>
-                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
-                                Qty</th>
-                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                                Total</th>
-                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Delivery</th>
-                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Remarks</th>
-                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200" id="itemsBody">
-                        <!-- Rows will be added by JS -->
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="6" class="px-3 py-3 text-right font-bold text-gray-700">Grand Total:</td>
-                            <td class="px-3 py-3">
-                                <input type="number" name="total_amount" id="grandTotal"
-                                    class="w-full border-transparent bg-transparent font-bold text-gray-900 focus:ring-0 text-right"
-                                    readonly value="0.00">
-                            </td>
-                            <td colspan="3"></td>
-                        </tr>
-                    </tfoot>
-                </table>
-                <button type="button" onclick="addItemRow()"
-                    class="mt-2 text-sm text-blue-600 hover:text-blue-900 font-medium">+ Add Item</button>
-            </div>
-
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700">Notes</label>
-                <textarea name="notes" rows="3"
-                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border">{{ old('notes') }}</textarea>
-            </div>
-
-            <div class="flex justify-end gap-3">
-                <a href="{{ route('quotations.index') }}"
-                    class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm text-sm font-medium hover:bg-gray-50">Cancel</a>
-                <button type="submit"
-                    class="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm text-sm font-medium hover:bg-blue-700">Create
-                    Quotation</button>
-            </div>
+            
         </form>
     </div>
 
     <template id="itemRowTemplate">
         <tr>
-            <td class="px-2 py-2"><input name="items[INDEX][make]"
-                    class="w-full border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500 border">
+            <td class="px-2 py-1 text-sm text-gray-700">SR</td>
+            <td class="px-2 py-1"><input name="items[INDEX][name]" class="w-full border-gray-200 rounded px-2 py-1 text-xs border item-name"></td>
+            <td class="px-2 py-1">
+                <select name="items[INDEX][unit]" class="w-full border-gray-200 rounded px-2 py-1 text-xs border unit">
+                    <option value="Nos">Nos</option>
+                    <option value="Pcs">Pcs</option>
+                    <option value="Mtr">Mtr</option>
+                    <option value="Kg">Kg</option>
+                    <option value="Days">Days</option>
+                    <option value="ML (FOR OIL)">ML ( FOR OIL)</option>
+                </select>
             </td>
-            <td class="px-2 py-2"><input name="items[INDEX][model_no]"
-                    class="w-full border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500 border">
+            <td class="px-2 py-1"><input type="number" step="1" name="items[INDEX][qty]" class="w-full border-gray-200 rounded px-2 py-1 text-xs text-right qty" value="1" oninput="calculateRow(this)"></td>
+                <td class="px-2 py-1">
+                    <div class="flex items-center">
+                        <span class="text-sm mr-1">₹</span>
+                        <input type="number" step="0.01" name="items[INDEX][rate]" class="w-full border-gray-200 rounded px-2 py-1 text-xs text-right rate" value="0" oninput="calculateRow(this)">
+                    </div>
+                </td>
+            <td class="px-2 py-1">
+                <div class="flex items-center">
+                    <span class="text-sm mr-1">₹</span>
+                    <input type="text" name="items[INDEX][amount]" class="w-full bg-gray-50 border-gray-200 rounded px-2 py-1 text-xs text-right amount" readonly>
+                </div>
             </td>
-            <td class="px-2 py-2"><input type="number" step="0.01" name="items[INDEX][unit_price]"
-                    class="w-full border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500 border unit-price"
-                    oninput="calculateRow(this)"></td>
-            <td class="px-2 py-2"><input type="number" step="0.01" name="items[INDEX][discount]"
-                    class="w-full border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500 border discount"
-                    value="0" oninput="calculateRow(this)"></td>
-            <td class="px-2 py-2"><input type="number" step="0.01" name="items[INDEX][unit_discounted_price]"
-                    class="w-full bg-gray-50 border-gray-300 rounded px-2 py-1 text-sm text-gray-500 border unit-disc-price"
-                    readonly></td>
-            <td class="px-2 py-2"><input type="number" name="items[INDEX][quantity]"
-                    class="w-full border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500 border quantity"
-                    value="1" min="1" oninput="calculateRow(this)"></td>
-            <td class="px-2 py-2"><input type="number" step="0.01" name="items[INDEX][total_price]"
-                    class="w-full bg-gray-50 border-gray-300 rounded px-2 py-1 text-sm text-gray-500 border total-price"
-                    readonly></td>
-            <td class="px-2 py-2"><input type="date" name="items[INDEX][delivery_time]"
-                    class="w-full border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500 border">
+            <td class="px-2 py-1">
+                <select name="items[INDEX][discount_type]" class="w-full border-gray-200 rounded px-2 py-1 text-xs border discount-type" onchange="calculateRow(this)">
+                    <option value="percent">% — Percent</option>
+                    <option value="fixed">₹ — Fixed</option>
+                </select>
             </td>
-            <td class="px-2 py-2"><input name="items[INDEX][remarks]"
-                    class="w-full border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500 border">
+            <td class="px-2 py-1"><input type="number" step="0.01" name="items[INDEX][discount_value]" class="w-full border-gray-200 rounded px-2 py-1 text-xs text-right discount-value" value="0" oninput="calculateRow(this)"></td>
+            <td class="px-2 py-1">
+                <div class="flex items-center">
+                    <span class="text-sm mr-1">₹</span>
+                    <input type="text" name="items[INDEX][total_after_discount]" class="w-full bg-gray-50 border-gray-200 rounded px-2 py-1 text-xs text-right total-after" readonly>
+                </div>
             </td>
-            <td class="px-2 py-2 text-center">
-                <button type="button" onclick="removeRow(this)" class="text-red-600 hover:text-red-900">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                        </path>
-                    </svg>
-                </button>
+            <td class="px-2 py-1">
+                <div class="flex items-center">
+                    <input type="number" step="0.01" name="items[INDEX][gst_percent]" class="w-full border-gray-200 rounded px-2 py-1 text-xs text-right gst-percent" value="18" oninput="calculateRow(this)">
+                    <span class="ml-1 text-xs">%</span>
+                </div>
             </td>
+            <td class="px-2 py-1">
+                <div class="flex items-center">
+                    <span class="text-sm mr-1">₹</span>
+                    <input type="text" name="items[INDEX][gst_amount]" class="w-full bg-gray-50 border-gray-200 rounded px-2 py-1 text-xs text-right gst-amount" readonly>
+                </div>
+            </td>
+            <td class="px-2 py-1">
+                <div class="flex items-center">
+                    <span class="text-sm mr-1">₹</span>
+                    <input type="text" name="items[INDEX][total_with_gst]" class="w-full bg-gray-50 border-gray-200 rounded px-2 py-1 text-xs text-right total-with-gst" readonly>
+                </div>
+            </td>
+            <td class="px-2 py-1 text-center"><button type="button" onclick="removeRow(this)" class="text-red-600">&times;</button></td>
         </tr>
     </template>
 
@@ -166,46 +214,80 @@
             const clone = template.content.cloneNode(true);
             const tbody = document.getElementById('itemsBody');
 
-            // Replace INDEX placeholder
-            const inputs = clone.querySelectorAll('input');
-            inputs.forEach(input => {
-                input.name = input.name.replace('INDEX', rowIndex);
-            });
-
-            tbody.appendChild(clone);
+            // Replace INDEX placeholder and SR number
+            const html = clone.firstElementChild.outerHTML.replace(/INDEX/g, rowIndex).replace('SR', (rowIndex+1));
+            const temp = document.createElement('tbody');
+            temp.innerHTML = html;
+            tbody.appendChild(temp.firstElementChild);
             rowIndex++;
+            calculateAll();
         }
 
         function removeRow(btn) {
             const row = btn.closest('tr');
             row.remove();
-            calculateGrandTotal();
+            calculateAll();
         }
 
-        function calculateRow(input) {
-            const row = input.closest('tr');
-            const unitPrice = parseFloat(row.querySelector('.unit-price').value) || 0;
-            const discount = parseFloat(row.querySelector('.discount').value) || 0;
-            const quantity = parseFloat(row.querySelector('.quantity').value) || 0;
+        function calculateRow(el) {
+            const row = el.closest('tr');
+            const qty = parseFloat(row.querySelector('.qty').value) || 0;
+            const rate = parseFloat(row.querySelector('.rate').value) || 0;
+            const amount = qty * rate;
+            row.querySelector('.amount').value = amount.toFixed(2);
 
-            const unitDiscPrice = unitPrice - (unitPrice * discount / 100);
-            const totalPrice = unitDiscPrice * quantity;
+            const dtype = row.querySelector('.discount-type').value;
+            const dval = parseFloat(row.querySelector('.discount-value').value) || 0;
+            let totalAfter = amount;
+            if (dtype === 'percent') {
+                totalAfter = amount - (amount * dval / 100);
+            } else {
+                totalAfter = amount - dval;
+            }
+            row.querySelector('.total-after').value = totalAfter.toFixed(2);
 
-            row.querySelector('.unit-disc-price').value = unitDiscPrice.toFixed(2);
-            row.querySelector('.total-price').value = totalPrice.toFixed(2);
+            const gstp = parseFloat(row.querySelector('.gst-percent').value) || 0;
+            const gstAmount = (totalAfter * gstp / 100);
+            row.querySelector('.gst-amount').value = gstAmount.toFixed(2);
 
-            calculateGrandTotal();
+            row.querySelector('.total-with-gst').value = (totalAfter + gstAmount).toFixed(2);
+
+            calculateAll();
         }
 
-        function calculateGrandTotal() {
-            let total = 0;
-            document.querySelectorAll('.total-price').forEach(input => {
-                total += parseFloat(input.value) || 0;
+        function calculateAll() {
+            let sub = 0;
+            let totalDiscount = 0;
+            let totalGst = 0;
+            document.querySelectorAll('#itemsBody tr').forEach(row => {
+                const amount = parseFloat(row.querySelector('.amount').value) || 0;
+                const totalAfter = parseFloat(row.querySelector('.total-after').value) || 0;
+                const gst = parseFloat(row.querySelector('.gst-amount').value) || 0;
+                sub += amount;
+                totalDiscount += (amount - totalAfter);
+                totalGst += gst;
             });
-            document.getElementById('grandTotal').value = total.toFixed(2);
+
+            document.getElementById('subTotal').value = sub.toFixed(2);
+            document.getElementById('summaryAmount').innerText = '₹ ' + sub.toFixed(2);
+            document.getElementById('summaryDiscount').innerText = '₹ ' + totalDiscount.toFixed(2);
+            const totalAmount = sub - totalDiscount;
+            document.getElementById('summaryTotal').innerText = '₹ ' + totalAmount.toFixed(2);
+
+            // split CGST/SGST equally
+            const cgst = (totalGst/2);
+            const sgst = (totalGst/2);
+            document.getElementById('summaryCGST').innerText = '₹ ' + cgst.toFixed(2);
+            document.getElementById('summarySGST').innerText = '₹ ' + sgst.toFixed(2);
+            document.getElementById('summaryIGST').innerText = '₹ ' + (0).toFixed(2);
+
+            document.getElementById('netAmount').innerText = '₹ ' + (totalAmount + totalGst + parseFloat(document.getElementById('roundOff').value || 0)).toFixed(2);
         }
 
-        // Add initial row
+        function calculateNet() {
+            calculateAll();
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             addItemRow();
         });

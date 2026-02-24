@@ -116,13 +116,22 @@ class QuotationController extends Controller
             'notes' => 'nullable|string',
             'status' => 'required|in:draft,sent,accepted,rejected,converted',
             'items' => 'required|array|min:1',
+            // legacy fields
             'items.*.make' => 'nullable|string',
             'items.*.model_no' => 'nullable|string',
-            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.unit_price' => 'nullable|numeric|min:0',
             'items.*.discount' => 'nullable|numeric|min:0',
-            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.quantity' => 'nullable|integer|min:1',
             'items.*.delivery_time' => 'nullable|string',
             'items.*.remarks' => 'nullable|string',
+            // new form fields
+            'items.*.name' => 'nullable|string',
+            'items.*.unit' => 'nullable|string',
+            'items.*.qty' => 'nullable|integer|min:1',
+            'items.*.rate' => 'nullable|numeric|min:0',
+            'items.*.discount_type' => 'nullable|in:percent,fixed',
+            'items.*.discount_value' => 'nullable|numeric|min:0',
+            'items.*.gst_percent' => 'nullable|numeric|min:0',
             'is_usd' => 'nullable|boolean',
         ]);
 
@@ -131,13 +140,31 @@ class QuotationController extends Controller
         // Calculate total amount from items to be safe
         $totalAmount = 0;
         foreach ($data['items'] as $item) {
-            $unitPrice = $item['unit_price'];
-            $discount = $item['discount'] ?? 0;
-            $qty = $item['quantity'];
+            // map values from either legacy or new form
+            $unitPrice = $item['unit_price'] ?? $item['rate'] ?? 0;
+            $qty = $item['quantity'] ?? $item['qty'] ?? 0;
 
-            // Discount calculation (Assuming percentage as per view logic)
-            // View: unitDisc = unit - (unit * disc / 100)
-            $unitDiscPrice = $unitPrice - ($unitPrice * $discount / 100);
+            // determine discount
+            $discountPercent = null;
+            $discountFixed = null;
+            if (isset($item['discount'])) {
+                $discountPercent = $item['discount'];
+            } elseif (isset($item['discount_type']) && isset($item['discount_value'])) {
+                if ($item['discount_type'] === 'percent') {
+                    $discountPercent = $item['discount_value'];
+                } else {
+                    $discountFixed = $item['discount_value'];
+                }
+            }
+
+            if ($discountPercent !== null) {
+                $unitDiscPrice = $unitPrice - ($unitPrice * $discountPercent / 100);
+            } elseif ($discountFixed !== null && $qty > 0) {
+                $unitDiscPrice = max(0, $unitPrice - ($discountFixed / $qty));
+            } else {
+                $unitDiscPrice = $unitPrice;
+            }
+
             $totalAmount += $unitDiscPrice * $qty;
         }
 
@@ -155,22 +182,42 @@ class QuotationController extends Controller
         ]);
 
         foreach ($data['items'] as $item) {
-            $unitPrice = $item['unit_price'];
-            $discount = $item['discount'] ?? 0;
-            $qty = $item['quantity'];
-            $unitDiscPrice = $unitPrice - ($unitPrice * $discount / 100);
+            $unitPrice = $item['unit_price'] ?? $item['rate'] ?? 0;
+            $qty = $item['quantity'] ?? $item['qty'] ?? 0;
+
+            // determine discount
+            $discountPercent = 0;
+            $discountFixed = null;
+            if (isset($item['discount'])) {
+                $discountPercent = $item['discount'];
+            } elseif (isset($item['discount_type']) && isset($item['discount_value'])) {
+                if ($item['discount_type'] === 'percent') {
+                    $discountPercent = $item['discount_value'];
+                } else {
+                    $discountFixed = $item['discount_value'];
+                }
+            }
+
+            if ($discountPercent) {
+                $unitDiscPrice = $unitPrice - ($unitPrice * $discountPercent / 100);
+            } elseif ($discountFixed !== null && $qty > 0) {
+                $unitDiscPrice = max(0, $unitPrice - ($discountFixed / $qty));
+            } else {
+                $unitDiscPrice = $unitPrice;
+            }
+
             $totalPrice = $unitDiscPrice * $qty;
 
             $quotation->items()->create([
-                'make' => $item['make'],
-                'model_no' => $item['model_no'],
+                'make' => $item['make'] ?? $item['name'] ?? null,
+                'model_no' => $item['model_no'] ?? null,
                 'unit_price' => $unitPrice,
-                'discount' => $discount, // Storing percentage
+                'discount' => $discountPercent,
                 'unit_discounted_price' => $unitDiscPrice,
                 'quantity' => $qty,
                 'total_price' => $totalPrice,
-                'delivery_time' => $item['delivery_time'],
-                'remarks' => $item['remarks'],
+                'delivery_time' => $item['delivery_time'] ?? null,
+                'remarks' => $item['remarks'] ?? null,
             ]);
         }
 
@@ -201,13 +248,22 @@ class QuotationController extends Controller
             'notes' => 'nullable|string',
             'status' => 'required|in:draft,sent,accepted,rejected,converted',
             'items' => 'required|array|min:1',
+            // legacy
             'items.*.make' => 'nullable|string',
             'items.*.model_no' => 'nullable|string',
-            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.unit_price' => 'nullable|numeric|min:0',
             'items.*.discount' => 'nullable|numeric|min:0',
-            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.quantity' => 'nullable|integer|min:1',
             'items.*.delivery_time' => 'nullable|string',
             'items.*.remarks' => 'nullable|string',
+            // new
+            'items.*.name' => 'nullable|string',
+            'items.*.unit' => 'nullable|string',
+            'items.*.qty' => 'nullable|integer|min:1',
+            'items.*.rate' => 'nullable|numeric|min:0',
+            'items.*.discount_type' => 'nullable|in:percent,fixed',
+            'items.*.discount_value' => 'nullable|numeric|min:0',
+            'items.*.gst_percent' => 'nullable|numeric|min:0',
             'is_usd' => 'nullable|boolean',
         ]);
 
@@ -216,10 +272,29 @@ class QuotationController extends Controller
         // Calculate total
         $totalAmount = 0;
         foreach ($data['items'] as $item) {
-            $unitPrice = $item['unit_price'];
-            $discount = $item['discount'] ?? 0;
-            $qty = $item['quantity'];
-            $unitDiscPrice = $unitPrice - ($unitPrice * $discount / 100);
+            $unitPrice = $item['unit_price'] ?? $item['rate'] ?? 0;
+            $qty = $item['quantity'] ?? $item['qty'] ?? 0;
+
+            $discountPercent = null;
+            $discountFixed = null;
+            if (isset($item['discount'])) {
+                $discountPercent = $item['discount'];
+            } elseif (isset($item['discount_type']) && isset($item['discount_value'])) {
+                if ($item['discount_type'] === 'percent') {
+                    $discountPercent = $item['discount_value'];
+                } else {
+                    $discountFixed = $item['discount_value'];
+                }
+            }
+
+            if ($discountPercent !== null) {
+                $unitDiscPrice = $unitPrice - ($unitPrice * $discountPercent / 100);
+            } elseif ($discountFixed !== null && $qty > 0) {
+                $unitDiscPrice = max(0, $unitPrice - ($discountFixed / $qty));
+            } else {
+                $unitDiscPrice = $unitPrice;
+            }
+
             $totalAmount += $unitDiscPrice * $qty;
         }
 
@@ -238,22 +313,41 @@ class QuotationController extends Controller
         $quotation->items()->delete();
 
         foreach ($data['items'] as $item) {
-            $unitPrice = $item['unit_price'];
-            $discount = $item['discount'] ?? 0;
-            $qty = $item['quantity'];
-            $unitDiscPrice = $unitPrice - ($unitPrice * $discount / 100);
+            $unitPrice = $item['unit_price'] ?? $item['rate'] ?? 0;
+            $qty = $item['quantity'] ?? $item['qty'] ?? 0;
+
+            $discountPercent = 0;
+            $discountFixed = null;
+            if (isset($item['discount'])) {
+                $discountPercent = $item['discount'];
+            } elseif (isset($item['discount_type']) && isset($item['discount_value'])) {
+                if ($item['discount_type'] === 'percent') {
+                    $discountPercent = $item['discount_value'];
+                } else {
+                    $discountFixed = $item['discount_value'];
+                }
+            }
+
+            if ($discountPercent) {
+                $unitDiscPrice = $unitPrice - ($unitPrice * $discountPercent / 100);
+            } elseif ($discountFixed !== null && $qty > 0) {
+                $unitDiscPrice = max(0, $unitPrice - ($discountFixed / $qty));
+            } else {
+                $unitDiscPrice = $unitPrice;
+            }
+
             $totalPrice = $unitDiscPrice * $qty;
 
             $quotation->items()->create([
-                'make' => $item['make'],
-                'model_no' => $item['model_no'],
+                'make' => $item['make'] ?? $item['name'] ?? null,
+                'model_no' => $item['model_no'] ?? null,
                 'unit_price' => $unitPrice,
-                'discount' => $discount,
+                'discount' => $discountPercent,
                 'unit_discounted_price' => $unitDiscPrice,
                 'quantity' => $qty,
                 'total_price' => $totalPrice,
-                'delivery_time' => $item['delivery_time'],
-                'remarks' => $item['remarks'],
+                'delivery_time' => $item['delivery_time'] ?? null,
+                'remarks' => $item['remarks'] ?? null,
             ]);
         }
 
