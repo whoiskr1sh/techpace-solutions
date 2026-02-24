@@ -26,7 +26,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Customer Email</label>
-                    <input name="customer_email" value="{{ old('customer_email') }}"
+                    <input name="customer_email" value="{{ old('customer_email') }}" required
                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border">
                 </div>
             </div>

@@ -110,7 +110,7 @@ class QuotationController extends Controller
         $data = $request->validate([
             'quotation_number' => 'required|string|unique:quotations,quotation_number',
             'customer_name' => 'required|string|max:255',
-            'customer_email' => 'nullable|email|max:255',
+            'customer_email' => 'required|email|max:255',
             'customer_phone' => 'nullable|string|max:30',
             'source_of_inquiry_id' => 'nullable|exists:source_of_inquiries,id',
             'notes' => 'nullable|string',
@@ -242,7 +242,7 @@ class QuotationController extends Controller
 
         $data = $request->validate([
             'customer_name' => 'required|string|max:255',
-            'customer_email' => 'nullable|email|max:255',
+            'customer_email' => 'required|email|max:255',
             'customer_phone' => 'nullable|string|max:30',
             'source_of_inquiry_id' => 'nullable|exists:source_of_inquiries,id',
             'notes' => 'nullable|string',
