@@ -34,8 +34,10 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\HsnCodeController;
 use App\Http\Controllers\DuplicateQuotationController;
+use App\Http\Controllers\ItemController;
 
 Route::middleware(['auth'])->group(function () {
+    Route::resource('items', ItemController::class)->only(['index', 'store']);
     Route::resource('sales-orders', SalesOrderController::class);
     Route::post('vendors/import', [VendorController::class, 'import'])->name('vendors.import');
     Route::resource('vendors', VendorController::class);

@@ -95,8 +95,12 @@
                                     $unitDiscPrice = $unitPrice - ($unitPrice * $discount / 100);
                                     $totalPrice = $unitDiscPrice * $qty;
                                 @endphp
-                                <td class="px-2 py-2"><input name="items[{{$index}}][make]" value="{{ $item->make ?? '' }}"
-                                        class="w-full border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500 border">
+                                <td class="px-2 py-2">
+                                    <select name="items[{{$index}}][make]"
+                                        class="w-full border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500 border item-name"
+                                        data-selected="{{ $item->make ?? '' }}">
+                                        <option value="">Select Item</option>
+                                    </select>
                                 </td>
                                 <td class="px-2 py-2"><input name="items[{{$index}}][model_no]"
                                         value="{{ $item->model_no ?? '' }}"
@@ -155,8 +159,12 @@
                         </tr>
                     </tfoot>
                 </table>
-                <button type="button" onclick="addItemRow()"
-                    class="mt-2 text-sm text-blue-600 hover:text-blue-900 font-medium">+ Add Item</button>
+                <div class="mt-2 flex gap-4">
+                    <button type="button" onclick="addItemRow()"
+                        class="text-sm text-blue-600 hover:text-blue-900 font-medium">+ Add Row</button>
+                    <button type="button" onclick="openAddItemModal()"
+                        class="text-sm text-green-600 hover:text-green-900 font-medium">+ Create New Item</button>
+                </div>
             </div>
 
             <div class="mb-6">
@@ -172,13 +180,124 @@
                     class="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm text-sm font-medium hover:bg-blue-700">Update
                     Quotation</button>
             </div>
+            <div id="addItemModal"
+                class="hidden fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center">
+                <div class="bg-white rounded-lg shadow-xl w-11/12 md:w-3/4 max-w-4xl p-6 relative">
+                    <button type="button" onclick="closeAddItemModal()"
+                        class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold">&times;</button>
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Add Item</h3>
+
+                    <div id="addItemErrors" class="hidden mb-4 p-3 bg-red-100 text-red-700 rounded text-sm"></div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Type of Item *</label>
+                            <select id="modal_type_of_item"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm sm:text-sm px-3 py-2 border">
+                                <option value="SERVICE">Service</option>
+                                <option value="TRADING">Trading</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Group Of Item</label>
+                            <input type="text" id="modal_group_of_item"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm sm:text-sm px-3 py-2 border">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Item Name *</label>
+                            <input type="text" id="modal_item_name"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm sm:text-sm px-3 py-2 border">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Item Description</label>
+                            <textarea id="modal_item_description" rows="2"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm sm:text-sm px-3 py-2 border"></textarea>
+                        </div>
+                        <div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Primary Unit</label>
+                                    <select id="modal_primary_unit"
+                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm sm:text-sm px-3 py-2 border">
+                                        <option value="">Select Unit</option>
+                                        <option value="Nos">Nos</option>
+                                        <option value="Pcs">Pcs</option>
+                                        <option value="Mtr">Mtr</option>
+                                        <option value="Kg">Kg</option>
+                                        <option value="Days">Days</option>
+                                        <option value="ML (FOR OIL)">ML ( FOR OIL)</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center mt-6">
+                                    <input type="checkbox" id="modal_is_freez"
+                                        class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                                    <label class="ml-2 block text-sm text-gray-700">Freez</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">GST (%)</label>
+                            <input type="number" step="0.01" id="modal_gst_percent"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm sm:text-sm px-3 py-2 border"
+                                value="0">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">IGST (%)</label>
+                            <input type="number" step="0.01" id="modal_igst_percent"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm sm:text-sm px-3 py-2 border"
+                                value="0">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">HSN CODE</label>
+                            <input type="text" id="modal_hsn_code"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm sm:text-sm px-3 py-2 border">
+                        </div>
+                        <div class="flex items-center mt-6">
+                            <input type="checkbox" id="modal_is_machine"
+                                class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                            <label class="ml-2 block text-sm text-gray-700">Is Machine?</label>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Account Group</label>
+                            <input type="text" id="modal_account_group"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm sm:text-sm px-3 py-2 border">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Upload Photo</label>
+                            <input type="file" id="modal_photo" accept="image/*"
+                                class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 mt-4 pt-4 border-t">
+                        <button type="button" onclick="closeAddItemModal()"
+                            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium">Cancel</button>
+                        <button type="button" onclick="submitAddItem()"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                            id="btnSubmitAddItem">Submit</button>
+                    </div>
+                </div>
+            </div>
         </form>
     </div>
 
     <template id="itemRowTemplate">
         <tr>
-            <td class="px-2 py-2"><input name="items[INDEX][make]"
-                    class="w-full border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500 border">
+            <td class="px-2 py-2">
+                <select name="items[INDEX][make]"
+                    class="w-full border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500 border item-name">
+                    <option value="">Select Item</option>
+                    <!-- Options injected dynamically -->
+                </select>
             </td>
             <td class="px-2 py-2"><input name="items[INDEX][model_no]"
                     class="w-full border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500 border">
@@ -219,11 +338,38 @@
     <script>
         // Start index after existing rows
         let rowIndex = {{ count(old('items', $quotation->items->count() ? $quotation->items : [])) }};
+        let masterItems = @json(\App\Models\Item::orderBy('item_name')->get());
 
         // If 0, start at 0
         if (rowIndex == 0) rowIndex = 0;
 
+        function populateItemDropdowns() {
+            let optionsHtml = '<option value="">Select Item</option>';
+            masterItems.forEach(item => {
+                optionsHtml += `<option value="${item.item_name}" data-unit="${item.primary_unit || ''}" data-gst="${item.gst_percent || 0}">${item.item_name}</option>`;
+            });
+
+            // Update template
+            const template = document.getElementById('itemRowTemplate');
+            const selectTemplate = template.content.querySelector('.item-name');
+            if (selectTemplate) {
+                selectTemplate.innerHTML = optionsHtml;
+            }
+
+            // Update existing rows
+            document.querySelectorAll('#itemsBody .item-name').forEach(select => {
+                const currentVal = select.getAttribute('data-selected') || select.value;
+                select.innerHTML = optionsHtml;
+                if (currentVal) {
+                    select.value = currentVal;
+                    // Ensure the selected attribute persists for template reloading if they re-render
+                    select.setAttribute('data-selected', currentVal);
+                }
+            });
+        }
+
         function addItemRow() {
+            populateItemDropdowns();
             const template = document.getElementById('itemRowTemplate');
             const clone = template.content.cloneNode(true);
             const tbody = document.getElementById('itemsBody');
@@ -267,8 +413,88 @@
             document.getElementById('grandTotal').value = total.toFixed(2);
         }
 
+        function openAddItemModal() {
+            document.getElementById('addItemErrors').classList.add('hidden');
+            // reset form
+            document.getElementById('modal_type_of_item').value = 'SERVICE';
+            document.getElementById('modal_group_of_item').value = '';
+            document.getElementById('modal_item_name').value = '';
+            document.getElementById('modal_item_description').value = '';
+            document.getElementById('modal_primary_unit').value = '';
+            document.getElementById('modal_is_freez').checked = false;
+            document.getElementById('modal_gst_percent').value = '0';
+            document.getElementById('modal_igst_percent').value = '0';
+            document.getElementById('modal_hsn_code').value = '';
+            document.getElementById('modal_is_machine').checked = false;
+            document.getElementById('modal_account_group').value = '';
+            document.getElementById('modal_photo').value = '';
+
+            document.getElementById('addItemModal').classList.remove('hidden');
+        }
+
+        function closeAddItemModal() {
+            document.getElementById('addItemModal').classList.add('hidden');
+        }
+
+        function submitAddItem() {
+            const btn = document.getElementById('btnSubmitAddItem');
+            btn.disabled = true;
+            btn.innerText = 'Submitting...';
+            document.getElementById('addItemErrors').classList.add('hidden');
+
+            const formData = new FormData();
+            formData.append('_token', document.querySelector('input[name="_token"]').value);
+            formData.append('type_of_item', document.getElementById('modal_type_of_item').value);
+            formData.append('group_of_item', document.getElementById('modal_group_of_item').value);
+            formData.append('item_name', document.getElementById('modal_item_name').value);
+            formData.append('item_description', document.getElementById('modal_item_description').value);
+            formData.append('primary_unit', document.getElementById('modal_primary_unit').value);
+            if (document.getElementById('modal_is_freez').checked) formData.append('is_freez', 1);
+            formData.append('gst_percent', document.getElementById('modal_gst_percent').value);
+            formData.append('igst_percent', document.getElementById('modal_igst_percent').value);
+            formData.append('hsn_code', document.getElementById('modal_hsn_code').value);
+            if (document.getElementById('modal_is_machine').checked) formData.append('is_machine', 1);
+            formData.append('account_group', document.getElementById('modal_account_group').value);
+
+            const photoInput = document.getElementById('modal_photo');
+            if (photoInput && photoInput.files.length > 0) {
+                formData.append('photo', photoInput.files[0]);
+            }
+
+            fetch('{{ route("items.store") }}', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerText = 'Submit';
+                    if (data.success) {
+                        masterItems.push(data.item);
+                        masterItems.sort((a, b) => a.item_name.localeCompare(b.item_name));
+                        populateItemDropdowns();
+                        closeAddItemModal();
+                    } else {
+                        const errorBox = document.getElementById('addItemErrors');
+                        errorBox.innerHTML = typeof data.message === 'string' ? data.message : 'Validation Error. Please check fields.';
+                        errorBox.classList.remove('hidden');
+                    }
+                })
+                .catch(error => {
+                    btn.disabled = false;
+                    btn.innerText = 'Submit';
+                    const errorBox = document.getElementById('addItemErrors');
+                    errorBox.innerHTML = 'An unexpected error occurred.';
+                    errorBox.classList.remove('hidden');
+                });
+        }
+
         // Add initial row if empty
         document.addEventListener('DOMContentLoaded', () => {
+            populateItemDropdowns();
             const tbody = document.getElementById('itemsBody');
             if (tbody.children.length === 0) {
                 addItemRow();
