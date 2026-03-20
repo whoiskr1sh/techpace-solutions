@@ -1,36 +1,48 @@
 @extends('layouts.dashboard')
 
 @section('content')
-    <h2 class="text-xl font-semibold mb-4">Edit Sales Order</h2>
-
-    <form method="POST" action="{{ route('sales-orders.update', $salesOrder) }}" class="grid grid-cols-1 gap-4 max-w-xl">
-        @csrf @method('PUT')
-        <div>
-            <label class="block text-sm font-medium">SO Number</label>
-            <input value="{{ $salesOrder->so_number }}" class="mt-1 block w-full border rounded px-3 py-2" disabled>
+    <div class="max-w-7xl mx-auto px-6 py-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-gray-800">Edit Sales Order</h2>
         </div>
 
-        <div>
-            <label class="block text-sm font-medium">Total Amount</label>
-            <input name="total_amount" type="number" step="0.01" value="{{ old('total_amount', $salesOrder->total_amount) }}" class="mt-1 block w-full border rounded px-3 py-2" required>
-            @error('total_amount')<div class="text-red-600 text-sm">{{ $message }}</div>@enderror
-        </div>
+        <form method="POST" action="{{ route('sales-orders.update', $salesOrder) }}" class="bg-white rounded-lg shadow-sm p-6">
+            @csrf @method('PUT')
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">SO Number</label>
+                    <input value="{{ $salesOrder->so_number }}" disabled
+                        class="mt-1 block w-full border-gray-300 bg-gray-50 text-gray-500 rounded-md shadow-sm sm:text-sm px-3 py-2 border">
+                </div>
 
-        <div>
-            <label class="block text-sm font-medium">Status</label>
-            <select name="status" class="mt-1 block w-full border rounded px-3 py-2">
-                <option value="pending" @selected(old('status', $salesOrder->status) == 'pending')>Pending</option>
-                <option value="confirmed" @selected(old('status', $salesOrder->status) == 'confirmed')>Confirmed</option>
-                <option value="dispatched" @selected(old('status', $salesOrder->status) == 'dispatched')>Dispatched</option>
-                <option value="completed" @selected(old('status', $salesOrder->status) == 'completed')>Completed</option>
-            </select>
-            @error('status')<div class="text-red-600 text-sm">{{ $message }}</div>@enderror
-        </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Status</label>
+                    <select name="status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border">
+                        <option value="pending" @selected(old('status', $salesOrder->status) == 'pending')>Pending</option>
+                        <option value="confirmed" @selected(old('status', $salesOrder->status) == 'confirmed')>Confirmed</option>
+                        <option value="dispatched" @selected(old('status', $salesOrder->status) == 'dispatched')>Dispatched</option>
+                        <option value="completed" @selected(old('status', $salesOrder->status) == 'completed')>Completed</option>
+                    </select>
+                    @error('status')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
+                </div>
+            </div>
 
-        <div class="flex gap-2">
-            <button class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
-            <a href="{{ route('sales-orders.index') }}" class="px-4 py-2 border rounded">Cancel</a>
-        </div>
-    </form>
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700">Total Amount</label>
+                <input name="total_amount" type="number" step="0.01" value="{{ old('total_amount', $salesOrder->total_amount) }}" required
+                    class="mt-1 block w-full md:w-1/2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border">
+                @error('total_amount')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
+            </div>
 
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <a href="{{ route('sales-orders.index') }}" class="px-4 py-2 bg-white text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium border border-gray-300 shadow-sm transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium border border-transparent shadow-sm transition-colors">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
 @endsection

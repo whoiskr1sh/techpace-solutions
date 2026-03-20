@@ -17,22 +17,46 @@
         </div>
     </div>
 
-    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <x-card title="Details">
-            <div class="text-sm">
-                <div><strong>Quotation:</strong> {{ $salesOrder->quotation?->quotation_number }}</div>
-                <div><strong>Customer:</strong> {{ $salesOrder->quotation?->customer_name }}</div>
-            </div>
-        </x-card>
+    <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="md:col-span-2 space-y-4">
+            <x-card title="Order Details">
+                <div class="grid grid-cols-2 gap-4 text-sm mt-4">
+                    <div>
+                        <span class="text-gray-500 block">Quotation Reference</span>
+                        <span class="font-medium text-gray-900">{{ $salesOrder->quotation?->quotation_number }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 block">Customer Name</span>
+                        <span class="font-medium text-gray-900">{{ $salesOrder->quotation?->customer_name }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 block">Total Amount</span>
+                        <span class="font-medium text-gray-900 font-semibold">{{ number_format($salesOrder->total_amount, 2) }}</span>
+                    </div>
+                </div>
+            </x-card>
+        </div>
 
-        <x-card title="Meta">
-            <div class="text-sm">
-                <div><strong>Total:</strong> {{ number_format($salesOrder->total_amount,2) }}</div>
-                <div class="mt-2"><strong>Status:</strong> <x-status-badge status="{{ $salesOrder->status }}" /></div>
-                <div class="mt-2"><strong>Created:</strong> {{ $salesOrder->created_at->toDayDateTimeString() }}</div>
-                <div class="mt-2"><strong>Created by:</strong> {{ $salesOrder->creator?->name }}</div>
-            </div>
-        </x-card>
+        <div class="md:col-span-1 space-y-4">
+            <x-card title="Metadata">
+                <div class="text-sm space-y-4">
+                    <div>
+                        <span class="text-gray-500 block font-medium">Status</span>
+                        <div class="mt-1">
+                            <x-status-badge status="{{ $salesOrder->status }}" />
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 block font-medium">Created On</span>
+                        <span class="font-medium text-gray-900">{{ $salesOrder->created_at->toDayDateTimeString() }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 block font-medium">Created By</span>
+                        <span class="font-medium text-gray-900">{{ $salesOrder->creator?->name }}</span>
+                    </div>
+                </div>
+            </x-card>
+        </div>
     </div>
 
 @endsection
