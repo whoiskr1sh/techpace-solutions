@@ -39,9 +39,11 @@ use App\Http\Controllers\ItemController;
 Route::middleware(['auth'])->group(function () {
     Route::resource('items', ItemController::class)->only(['index', 'store']);
     Route::resource('sales-orders', SalesOrderController::class);
+    Route::get('sales-orders/{sales_order}/pdf', [SalesOrderController::class, 'downloadPdf'])->name('sales-orders.pdf');
     Route::post('vendors/import', [VendorController::class, 'import'])->name('vendors.import');
     Route::resource('vendors', VendorController::class);
     Route::resource('purchase-orders', PurchaseOrderController::class);
+    Route::get('purchase-orders/{purchase_order}/pdf', [PurchaseOrderController::class, 'downloadPdf'])->name('purchase-orders.pdf');
     Route::resource('proforma-invoices', ProformaInvoiceController::class);
     Route::resource('invoices', InvoiceController::class)->middleware('check.invoice.visibility');
     Route::get('couriers', function () {

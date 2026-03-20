@@ -16,6 +16,7 @@
 
     <div class="mt-4">
         <a href="{{ route('purchase-orders.index') }}" class="btn">Back</a>
+        <a href="{{ route('purchase-orders.pdf', $po) }}" target="_blank" class="px-3 py-2 bg-gray-600 text-white rounded ml-2">Download PDF</a>
     </div>
 </div>
 @endsection

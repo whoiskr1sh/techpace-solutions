@@ -7,6 +7,7 @@
             <div class="text-sm text-gray-500">Linked Quotation: {{ $salesOrder->quotation?->quotation_number }}</div>
         </div>
         <div class="space-x-2">
+            <a href="{{ route('sales-orders.pdf', $salesOrder) }}" target="_blank" class="px-3 py-2 bg-gray-600 text-white rounded">Download PDF</a>
             @can('update', $salesOrder)
             <a href="{{ route('sales-orders.edit', $salesOrder) }}" class="px-3 py-2 bg-yellow-500 text-white rounded">Edit</a>
             @endcan

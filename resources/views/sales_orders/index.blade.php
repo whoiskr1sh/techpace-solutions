@@ -76,6 +76,7 @@
                             <div class="flex items-center gap-2">
                                 @can('view', $so)
                                     <a href="{{ route('sales-orders.show', $so) }}" class="text-blue-600">View</a>
+                                    <a href="{{ route('sales-orders.pdf', $so) }}" target="_blank" class="text-gray-600">PDF</a>
                                 @endcan
                                 @can('update', $so)
                                     <a href="{{ route('sales-orders.edit', $so) }}" class="text-yellow-600">Edit</a>

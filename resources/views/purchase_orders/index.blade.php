@@ -60,6 +60,7 @@
                         <td class="p-3">
                             <div class="flex items-center gap-2">
                                 <a href="{{ route('purchase-orders.show', $po) }}" class="text-blue-600">View</a>
+                                <a href="{{ route('purchase-orders.pdf', $po) }}" target="_blank" class="text-gray-600">PDF</a>
                                 @can('update', $po)
                                     <a href="{{ route('purchase-orders.edit', $po) }}" class="text-yellow-600">Edit</a>
                                 @endcan

@@ -154,6 +154,20 @@ class SalesOrderController extends Controller
         return redirect()->route('sales-orders.index')->with('success', 'Sales Order updated.');
     }
 
+    public function downloadPdf(SalesOrder $salesOrder)
+    {
+        $this->authorize('view', $salesOrder);
+        
+        $salesOrder->load(['quotation.items']);
+
+        if (class_exists('\PDF')) {
+            $pdf = \PDF::loadView('sales_orders.pdf', ['salesOrder' => $salesOrder]);
+            return $pdf->stream('SO_' . $salesOrder->so_number . '.pdf');
+        }
+
+        return view('sales_orders.pdf', ['salesOrder' => $salesOrder]);
+    }
+
     public function destroy(SalesOrder $salesOrder)
     {
         $this->authorize('delete', $salesOrder);

@@ -142,6 +142,20 @@ class PurchaseOrderController extends Controller
         return redirect()->route('purchase-orders.index')->with('success', 'Purchase Order updated.');
     }
 
+    public function downloadPdf(PurchaseOrder $purchase_order)
+    {
+        $this->authorize('view', $purchase_order);
+        
+        $purchase_order->load(['vendor', 'salesOrder.quotation.items']);
+
+        if (class_exists('\PDF')) {
+            $pdf = \PDF::loadView('purchase_orders.pdf', ['purchaseOrder' => $purchase_order]);
+            return $pdf->stream('PO_' . $purchase_order->po_number . '.pdf');
+        }
+
+        return view('purchase_orders.pdf', ['purchaseOrder' => $purchase_order]);
+    }
+
     public function destroy(PurchaseOrder $purchase_order)
     {
         $this->authorize('delete', $purchase_order);
